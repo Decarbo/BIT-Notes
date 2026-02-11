@@ -1,7 +1,9 @@
 // app/auth/login/page.tsx
 'use client';
-import { supabase } from '@/lib/supabaseClient';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
+
+const supabase = new SupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 export default function Login() {
 	async function login(formData: FormData) {

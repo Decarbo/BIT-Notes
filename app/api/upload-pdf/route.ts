@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
 				tags: tags,
 				file_url: publicUrl,
 				file_path: filePath,
+				uploader_email: user.email,
 				user_id: user.id,
 			},
 		]);

@@ -61,7 +61,7 @@ const GumroadHero = () => {
 
 					<div className="flex flex-col sm:flex-row gap-6 w-full lg:w-auto">
 						<Link href="/upload">
-							<button className="bg-[#90FF90] border-4 border-black px-10 py-6 text-2xl font-black heading-font brutal-shadow hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all uppercase">Start Sharing</button>
+							<button className="bg-[#90FF90] border-4 border-black px-10 py-6 text-2xl font-black heading-font brutal-shadow hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all uppercase">Start Contributing</button>
 						</Link>
 
 						<Link

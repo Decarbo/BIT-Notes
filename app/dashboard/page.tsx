@@ -1,224 +1,246 @@
 'use client';
 import { useAuth } from '@/lib/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js'; // ya apka custom client path
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { file } from 'zod';
+import { FileCode, Activity, ShieldCheck, Trash2, ArrowUpRight, Plus, Zap, Inbox, Terminal } from 'lucide-react';
 
-// Supabase client initialize karein (Environment vars ensure karein)
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
-// Helper: Bytes ko readable format (MB/KB) mein badalne ke liye
-const formatBytes = (bytes: number, decimals = 2) => {
-	if (!+bytes) return '0 Bytes';
-	const k = 1024;
-	const dm = decimals < 0 ? 0 : decimals;
+const formatBytes = (bytes: number) => {
+	if (!bytes) return '0 Bytes';
 	const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+	const i = Math.floor(Math.log(bytes) / Math.log(1024));
+	return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 };
 
-// Helper: Date format karne ke liye
-const formatDate = (dateString: string) => {
-	const date = new Date(dateString);
-	return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 export default function Dashboard() {
-	const { user, loading, signOut } = useAuth();
+	const { user, loading } = useAuth();
 	const router = useRouter();
-
-	// 1. State banayein real files ke liye
 	const [userFiles, setUserFiles] = useState<any[]>([]);
 	const [filesLoading, setFilesLoading] = useState(true);
-	console.log('Logged in user for Storage:', user);
-	useEffect(() => {
-		if (!loading && !user) {
-			router.push('/login');
+
+	// --- DYNAMIC ENGINE ---
+	const fileCount = userFiles.length;
+	const karmaPoints = fileCount * 20;
+
+	const rankInfo = useMemo(() => {
+		if (fileCount >= 20) return { name: 'DIAMOND', color: 'text-cyan-500', bg: 'bg-cyan-50', border: 'border-cyan-200' };
+		if (fileCount >= 12) return { name: 'BRONZE', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+		if (fileCount >= 5) return { name: 'SILVER', color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' };
+		return { name: 'ROOKIE', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
+	}, [fileCount]);
+
+	const fetchFiles = useCallback(async () => {
+		if (!user) return;
+		const folderName = `user-${user.id}`;
+		const { data, error } = await supabase.storage.from('pdfs').list(folderName);
+
+		if (!error && data) {
+			const filesWithUrl = data.map((file) => {
+				const { data: urlData } = supabase.storage.from('pdfs').getPublicUrl(`${folderName}/${file.name}`);
+				return {
+					...file,
+					publicUrl: urlData.publicUrl,
+					displayName: file.name.includes('-') ? file.name.split('-').slice(1).join('-') : file.name,
+				};
+			});
+			setUserFiles(filesWithUrl);
 		}
-	}, [user, loading, router]);
-	// 2. Files Fetch karne ka logic
-	useEffect(() => {
-		const fetchFiles = async () => {
-			if (!user) return;
-
-			// Exact folder name from your screenshot
-			const folderName = `user-${user.id}`;
-			console.log('Checking folder:', folderName);
-
-			// Try 1: Listing with folder name
-			const { data, error } = await supabase.storage.from('pdfs').list(folderName);
-
-			if (error) {
-				console.error('List Error:', error);
-			} else if (data.length === 0) {
-				console.warn('Folder found but it is empty or access denied. Trying root list...');
-
-				// Try 2: Root list to see if folder even exists to the client
-				const { data: rootData } = await supabase.storage.from('pdfs').list('');
-				console.log('Root items:', rootData);
-			} else {
-				console.log('SUCCESS! Files found:', data);
-
-				const filesWithUrl = data.map((file) => {
-					const { data: urlData } = supabase.storage.from('pdfs').getPublicUrl(`${folderName}/${file.name}`);
-					const displayName = file.name.includes('-') ? file.name.split('-').slice(1).join('-') : file.name;
-					return { ...file, publicUrl: urlData.publicUrl, displayName };
-				});
-				setUserFiles(filesWithUrl);
-			}
-			setFilesLoading(false);
-		};
-
-		fetchFiles();
+		setFilesLoading(false);
 	}, [user]);
-	if (loading) {
-		return <div className="min-h-screen flex items-center justify-center bg-[#FF90E8] font-black text-3xl animate-pulse tracking-wider">UNLOCKING THE VAULT...</div>;
-	}
 
-	if (!user) return null;
-	const fileName = file.name;
-	console.log(fileName);
-	const displayName = user.email?.split('@')[0] || 'Explorer';
-	console.log('Current User ID:', user.id);
-	const folderPath = `user-${user.id}`;
-	console.log('Looking in folder:', folderPath);
-	console.log('Looking in folder:', `user-${user.id}`);
+	useEffect(() => {
+		if (!loading && !user) router.push('/login');
+		if (user) fetchFiles();
+	}, [user, loading, router, fetchFiles]);
 
-	const deleteFile = async (fileId: string, filePath: string) => {
-		// Browser confirmation dialog
-		const confirmDelete = window.confirm('ARE YOU SURE? THIS ACTION CANNOT BE UNDONE! 🗑️');
-
-		if (!confirmDelete) return;
-
+	const deleteFile = async (fileName: string) => {
+		if (!user || !window.confirm('CONFIRM DELETION')) return;
+		const fullPath = `user-${user.id}/${fileName}`;
 		try {
-			setFilesLoading(true);
-
-			// A. Storage se delete karein
-			const { error: storageError } = await supabase.storage.from('pdfs').remove([filePath]);
-
-			if (storageError) throw storageError;
-
-			// B. Database se delete karein (Agar aap database use kar rahe hain)
-			const { error: dbError } = await supabase.from('notes').delete().match({ file_path: filePath });
-			// Note: Agar aap sirf storage use kar rahe hain toh ye part skip karein
-
-			// C. UI update karein
-			setUserFiles((prev) => prev.filter((f) => f.id !== fileId && f.name !== fileId));
-			alert('FILE DELETED FROM VAULT!');
-		} catch (error: any) {
-			console.error('Delete Error:', error.message);
-			alert('DELETE FAILED: ' + error.message);
-		} finally {
-			setFilesLoading(false);
+			const { data, error } = await supabase.storage.from('pdfs').remove([fullPath]);
+			if (error) throw error;
+			if (data && data.length > 0) {
+				await supabase.from('notes').delete().eq('file_path', fullPath);
+				setUserFiles((prev) => prev.filter((f) => f.name !== fileName));
+			}
+		} catch (e: any) {
+			alert(`SYSTEM_ERROR: ${e.message}`);
 		}
 	};
+
+	if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-black text-[#90FF90] font-mono text-sm tracking-widest uppercase">[Initializing_Vault_System...]</div>;
+
 	return (
-		<div className="min-h-screen bg-[#F0F0F0] selection:bg-black selection:text-[#90FF90] font-sans">
-			<main className="max-w-7xl mx-auto p-6 lg:p-10">
-				<header className="mb-12">
-					<h1
-						className="text-5xl md:text-6xl font-black uppercase tracking-tight mb-4"
-						style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-						Welcome back, <span className="text-pink-500">{displayName}</span>!
-					</h1>
-					<p className="text-xl font-bold text-gray-700">
-						{/* Dynamic Count */}
-						You've shared <span className="text-[#90FF90]">{userFiles.length}</span> PDFs this semester. Legend status incoming 🚀
-					</p>
+		<div className="min-h-screen bg-[#FBFBFB] font-sans text-black selection:bg-black selection:text-[#90FF90] p-4 md:p-8">
+			{/* CUSTOM FONTS IMPORT */}
+			<style
+				jsx
+				global>{`
+				@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+				h1,
+				h2,
+				h3,
+				.heading-font {
+					font-family: 'Space Grotesk', sans-serif;
+				}
+				.mono-font {
+					font-family: 'JetBrains Mono', monospace;
+				}
+
+				@keyframes subtle-blur {
+					from {
+						filter: blur(12px);
+						opacity: 0;
+						transform: scale(0.98);
+					}
+					to {
+						filter: blur(0);
+						opacity: 1;
+						transform: scale(1);
+					}
+				}
+				.reveal {
+					animation: subtle-blur 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+				}
+			`}</style>
+
+			<main className="max-w-6xl mx-auto">
+				{/* NAVIGATION & HEADER */}
+				<header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 reveal">
+					<div>
+						<div className="flex items-center gap-2 mb-2">
+							<span className="bg-black text-white text-[10px] px-2 py-0.5 mono-font font-bold">V 2.0.4</span>
+							<span className="text-gray-400 mono-font text-[10px] uppercase tracking-widest">Active_Session</span>
+						</div>
+						<h1 className="text-5xl md:text-6xl font-bold tracking-tighter leading-none lowercase">
+							root@<span className="text-pink-600 underline decoration-4 underline-offset-8">{user.email?.split('@')[0]}</span>
+						</h1>
+					</div>
+					<Link
+						href="/upload"
+						className="group bg-black text-white border-2 border-black px-8 py-3 font-bold text-lg shadow-[8px_8px_0px_0px_rgba(144,255,144,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all uppercase flex items-center gap-3">
+						<Plus size={18} /> Push_File
+					</Link>
 				</header>
 
-				{/* Stats Section (Abhi hardcoded hai, baad mein DB se link kar sakte hain) */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-					<div className="bg-[#90FF90] border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-						<p className="font-black uppercase text-sm mb-1">Total Downloads</p>
-						<p className="text-5xl font-black">1,204</p>
-					</div>
-					<div className="bg-yellow-300 border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-						<p className="font-black uppercase text-sm mb-1">Your Uploads</p>
-						{/* Dynamic Count */}
-						<p className="text-5xl font-black">{userFiles.length}</p>
-					</div>
-					<div className="bg-[#FF90E8] border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-						<p className="font-black uppercase text-sm mb-1">Karma Points</p>
-						<p className="text-5xl font-black">850</p>
-					</div>
+				{/* DYNAMIC STATS HUB */}
+				<div
+					className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 reveal"
+					style={{ animationDelay: '0.2s' }}>
+					{[
+						{ label: 'Karma_Score', val: karmaPoints, bg: 'bg-white', icon: <Activity size={16} />, sub: 'Points_Accrued' },
+						{ label: 'Tier_Status', val: rankInfo.name, bg: rankInfo.bg, icon: <ShieldCheck size={16} />, sub: 'Access_Level', textCol: rankInfo.color },
+						{ label: 'Active_Nodes', val: fileCount, bg: 'bg-white', icon: <FileCode size={16} />, sub: 'PDF_Uploads' },
+					].map((stat, i) => (
+						<div
+							key={i}
+							className={`${stat.bg} border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col group hover:bg-[#90FF90] transition-colors duration-300`}>
+							<div className="flex justify-between items-start mb-4">
+								<span className="p-2 border border-black bg-white group-hover:invert transition-all">{stat.icon}</span>
+								<span className="mono-font text-[9px] uppercase font-bold opacity-40 tracking-tighter">{stat.sub}</span>
+							</div>
+							<p className="mono-font text-xs uppercase font-bold text-gray-400 mb-1">{stat.label}</p>
+							<p className={`text-4xl font-bold heading-font tracking-tighter ${stat.textCol || 'text-black'}`}>{stat.val}</p>
+						</div>
+					))}
 				</div>
 
-				<div className="grid lg:grid-cols-3 gap-10">
-					{/* Recent Activity List */}
-					<div className="lg:col-span-2 space-y-6">
-						<div className="flex justify-between items-center">
-							<h2 className="text-4xl font-black uppercase">Recent Drops</h2>
-							<button className="font-black underline decoration-4 decoration-pink-500 hover:text-pink-600 transition-colors text-lg">View All →</button>
+				<div className="grid lg:grid-cols-4 gap-8">
+					{/* CORE FILESYSTEM */}
+					<div
+						className="lg:col-span-3 reveal"
+						style={{ animationDelay: '0.4s' }}>
+						<div className="flex items-center justify-between mb-4">
+							<h2 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-2">
+								<Terminal size={20} /> Remote_Directory
+							</h2>
+							<div className="h-[2px] flex-grow mx-4 bg-gray-100 hidden md:block"></div>
+							<span className="mono-font text-[10px] text-gray-400">{fileCount} Objects_Stored</span>
 						</div>
 
-						<div className="border-4 border-black bg-white overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-							{/* Loading State */}
-							{filesLoading && <div className="p-10 text-center font-bold">Loading your stash...</div>}
-
-							{/* Empty State */}
-							{!filesLoading && userFiles.length === 0 && <div className="p-10 text-center text-gray-500 font-bold">No uploads yet. Be the first to drop some knowledge!</div>}
-
-							{/* 3. Real Data Mapping */}
-							{userFiles.map((file, i) => (
-								<div
-									key={file.id || i}
-									className="flex items-center justify-between p-5 border-b-4 border-black last:border-b-0 hover:bg-gray-50 transition-colors group">
-									<div className="flex items-center gap-5 overflow-hidden">
-										<span className="text-4xl group-hover:scale-110 transition-transform flex-shrink-0">📄</span>
-										<div className="min-w-0">
-											<p className="font-black uppercase text-xl truncate">{file.displayName}</p>
-											<p className="text-base font-bold text-gray-600">
-												{formatDate(file.created_at)} • {formatBytes(file.metadata?.size)}
-											</p>
-										</div>
-									</div>
-
-									{/* Buttons Group */}
-									<div className="flex items-center gap-3">
-										<a
-											href={file.publicUrl}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="bg-yellow-300 border-2 border-black px-4 py-2 font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-sm uppercase">
-											Open
-										</a>
-
-										<button
-											onClick={() => deleteFile(file.id || file.name, `user-${user.id}/${file.name}`)}
-											className="bg-red-500 text-white border-2 border-black px-4 py-2 font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-sm uppercase flex items-center gap-1">
-											Delete 🗑️
-										</button>
-									</div>
+						<div className="border-2 border-black bg-white">
+							{filesLoading ? (
+								<div className="p-20 text-center mono-font text-xs uppercase animate-pulse">Scanning_Sectors...</div>
+							) : fileCount === 0 ? (
+								<div className="p-20 text-center flex flex-col items-center gap-4">
+									<Inbox
+										size={40}
+										strokeWidth={1}
+										className="text-gray-300"
+									/>
+									<p className="mono-font text-xs text-gray-400 uppercase tracking-widest">Directory_Empty_Wait_For_Input</p>
 								</div>
-							))}
+							) : (
+								<div className="divide-y-2 divide-black">
+									{userFiles.map((file, idx) => (
+										<div
+											key={file.name}
+											className="flex items-center justify-between p-4 hover:bg-gray-50 transition-all group">
+											<div className="flex items-center gap-5 min-w-0">
+												<div className="mono-font text-[10px] text-gray-300 font-bold hidden sm:block">0{idx + 1}</div>
+												<div className="min-w-0">
+													<p className="heading-font font-bold uppercase text-base md:text-lg truncate group-hover:text-pink-600 transition-colors">{file.displayName}</p>
+													<div className="flex items-center gap-3 mono-font text-[10px] font-bold text-gray-400 uppercase mt-1">
+														<span>{formatDate(file.created_at)}</span>
+														<span className="w-1 h-1 bg-gray-200 rounded-full"></span>
+														<span>{formatBytes(file.metadata?.size)}</span>
+													</div>
+												</div>
+											</div>
+											<div className="flex gap-2">
+												<a
+													href={file.publicUrl}
+													target="_blank"
+													rel="noreferrer"
+													className="border-2 border-black p-2 hover:bg-black hover:text-white transition-all">
+													<ArrowUpRight size={18} />
+												</a>
+												<button
+													onClick={() => deleteFile(file.name)}
+													className="border-2 border-black p-2 hover:bg-red-600 hover:text-white transition-all">
+													<Trash2 size={18} />
+												</button>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
 						</div>
 					</div>
 
-					{/* Sidebar (Upload Button etc.) */}
-					<div className="space-y-8">
-						<div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-center">
-							<div className="w-24 h-24 bg-pink-100 border-4 border-black rounded-full flex items-center justify-center text-5xl mb-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.3)]">➕</div>
-							<h3 className="text-2xl font-black uppercase mb-3">New Upload</h3>
-							<p className="font-bold text-gray-700 mb-6">Drop your notes, slides, or cheat sheets here!</p>
-							{/* Link to Upload Page */}
-							<Link
-								href="/upload"
-								className="w-full bg-[#90FF90] border-4 border-black py-5 font-black text-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-2 hover:translate-y-2 transition-all uppercase block">
-								Select File
-							</Link>
-						</div>
-						{/* ... Community Goal section same as before ... */}
-						<div className="bg-black text-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(255,144,232,1)]">
-							<h3 className="text-2xl font-black uppercase mb-5 text-[#FF90E8]">Community Goal</h3>
-							<p className="font-bold text-lg mb-5">
-								Only <span className="text-[#90FF90]">50 PDFs</span> away from Gold Hub!
-							</p>
-							<div className="w-full bg-gray-800 h-8 border-2 border-[#FF90E8] overflow-hidden">
-								<div className="bg-[#FF90E8] h-full w-[75%] transition-all"></div>
+					{/* DYNAMIC SIDEBAR */}
+					<div
+						className="lg:col-span-1 space-y-6 reveal"
+						style={{ animationDelay: '0.6s' }}>
+						<div className="bg-black text-white border-2 border-black p-6">
+							<h3 className="mono-font text-[10px] font-bold uppercase mb-4 text-[#90FF90] tracking-[0.2em]">Next_Milestone</h3>
+							<div className="flex justify-between items-end mb-2">
+								<span className="heading-font text-3xl font-bold tracking-tighter">{Math.min((fileCount / 25) * 100, 100).toFixed(0)}%</span>
+								<Zap
+									size={16}
+									className="text-[#90FF90] mb-2 fill-[#90FF90]"
+								/>
 							</div>
+							<div className="w-full bg-[#333] h-1 mb-4">
+								<div
+									className="bg-[#90FF90] h-full transition-all duration-1000 ease-out"
+									style={{ width: `${Math.min((fileCount / 25) * 100, 100)}%` }}
+								/>
+							</div>
+							<p className="mono-font text-[9px] uppercase text-gray-400 leading-relaxed">
+								Sync {25 - fileCount} more files to reach <span className="text-white underline">Legendary_Status</span>.
+							</p>
+						</div>
+
+						<div className="border-2 border-dashed border-gray-300 p-4">
+							<p className="mono-font text-[9px] font-bold uppercase mb-2 text-gray-400">System_Message</p>
+							<p className="text-xs heading-font font-bold uppercase leading-tight italic">"Sharing is the ultimate form of optimization."</p>
 						</div>
 					</div>
 				</div>
