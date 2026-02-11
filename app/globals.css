@@ -38,3 +38,60 @@ body {
 .animate-shimmer {
 	animation: shimmer 1.5s infinite;
 }
+/* Add this to your globals.css or a global style tag */
+
+/* 1. The Scrollbar Track */
+::-webkit-scrollbar {
+	width: 16px; /* Thick and chunky */
+	height: 16px;
+}
+
+/* 2. The Background/Track */
+::-webkit-scrollbar-track {
+	background: #ffffff;
+	border-left: 4px solid #000000;
+	/* For dark mode compatibility if using dark:bg-[#0a0a0a] */
+}
+
+.dark ::-webkit-scrollbar-track {
+	background: #0a0a0a;
+	border-left: 4px solid #ffffff;
+}
+
+/* 3. The Draggable Thumb */
+::-webkit-scrollbar-thumb {
+	background: #000000;
+	border: 3px solid #ffffff;
+	/* This creates a "gap" effect around the thumb */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+	background: #ffffff;
+	border: 3px solid #0a0a0a;
+}
+
+/* 4. Hover State - The "Pop" */
+::-webkit-scrollbar-thumb:hover {
+	background: #90ff90; /* Your signature Green */
+	border: 2px solid #000000;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+	background: #db2777; /* Your signature Pink (pink-600) */
+	border: 2px solid #ffffff;
+}
+
+/* 5. Custom Scrollbar for the "Live Signals" and "Archive" containers */
+.custom-scrollbar::-webkit-scrollbar {
+	width: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+	border-left: 2px solid #000000;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background: #000000;
+	border: 1px solid #ffffff;
+}

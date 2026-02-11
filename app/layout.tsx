@@ -3,6 +3,7 @@ import { ThemeProvider } from 'next-themes';
 import Navbar from './navbar/page';
 import './globals.css';
 import Providers from './providers';
+import SmoothScroll from './(howworks)/(components)/SmoothScroll';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 					disableTransitionOnChange // prevents flash on toggle (optional)
 				>
 					<Navbar />
-					<Providers>{children}</Providers>
+					<Providers>
+						<SmoothScroll>{children}</SmoothScroll>
+					</Providers>
 				</ThemeProvider>
 			</body>
 		</html>
