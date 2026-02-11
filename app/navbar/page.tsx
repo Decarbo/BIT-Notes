@@ -50,19 +50,18 @@ export default function Navbar() {
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-1">
 				<div className="flex justify-between h-16 items-center">
 					{/* LOGO */}
-					<div className="flex-shrink-0">
+
+					<div className="flex-shrink-0 flex items-center">
 						<Link
 							href="/"
-							className="group flex items-center gap-2">
-							<div className="bg-black dark:bg-white text-white dark:text-black p-2 border-2 border-black dark:border-white group-hover:rotate-6 transition-transform">
-								<Terminal
-									size={20}
-									className="text-[#90FF90] dark:text-pink-600"
-								/>
+							className="group relative">
+							<div className="bg-black text-white px-4 py-2 border-2 dark:bg-black/50 border-black transform group-hover:-rotate-2 transition-transform shadow-[4px_4px_0px_0px_rgba(255,144,232,1)]">
+								<span
+									className="text-xl sm:text-2xl font-black tracking-tighter uppercase"
+									style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+									BIT<span className="text-[#90FF90]">NOTES</span>
+								</span>
 							</div>
-							<span className="nav-heading text-2xl font-bold tracking-tighter uppercase hidden sm:block text-black dark:text-white">
-								BIT<span className="text-pink-600">.</span>NOTES
-							</span>
 						</Link>
 					</div>
 
