@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileUp, FileText, X, Rocket, BookOpen, Database, Cpu, Hash, AlertCircle, Terminal, Activity } from 'lucide-react';
+import { FileUp, FileText, X, Rocket, BookOpen, Database, Cpu, Hash, AlertCircle, Terminal, Activity, ShieldAlert } from 'lucide-react';
 
 export default function UploadPage() {
 	const [file, setFile] = useState<File | null>(null);
@@ -16,16 +16,31 @@ export default function UploadPage() {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const { user } = useAuth();
 
+	// Constraint: 50MB in bytes
+	const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
 	const handleFileChange = (selectedFile: File | undefined) => {
-		if (selectedFile && selectedFile.type === 'application/pdf') {
-			setFile(selectedFile);
-			setError(null);
-			// Auto-suggest metadata logic
-			const cleanName = selectedFile.name.split('.')[0].replace(/[-_]/g, ' ');
-			setDetails((prev) => ({ ...prev, subject: cleanName }));
-		} else if (selectedFile) {
+		if (!selectedFile) return;
+
+		// Validation 1: MIME Type
+		if (selectedFile.type !== 'application/pdf') {
 			setError('CORE_ERROR: INVALID_MIME_TYPE. REQUIRE_PDF.');
+			setFile(null);
+			return;
 		}
+
+		// Validation 2: File Size
+		if (selectedFile.size > MAX_FILE_SIZE) {
+			setError(`OVERSIZE_LOAD: ${selectedFile.name} EXCEEDS 50MB LIMIT.`);
+			setFile(null);
+			return;
+		}
+
+		// Success: Set file and auto-suggest metadata
+		setFile(selectedFile);
+		setError(null);
+		const cleanName = selectedFile.name.split('.')[0].replace(/[-_]/g, ' ');
+		setDetails((prev) => ({ ...prev, subject: cleanName }));
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +50,7 @@ export default function UploadPage() {
 		setLoading(true);
 		setUploadProgress(0);
 
-		// Simulating progress for the UI (Replace with XHR if real progress is needed)
+		// Simulating progress for the UI
 		const interval = setInterval(() => {
 			setUploadProgress((prev) => (prev < 90 ? prev + Math.random() * 15 : prev));
 		}, 400);
@@ -49,13 +64,14 @@ export default function UploadPage() {
 
 		try {
 			const res = await fetch('/api/upload-pdf', { method: 'POST', body: formData });
-			if (!res.ok) throw new Error('UPLOAD_FAILURE');
+			if (!res.ok) throw new Error('UPLOAD_FAILURE_SERVER_REJECTED');
 
 			setUploadProgress(100);
 			setTimeout(() => {
 				alert('DATA_PACKET_TRANSFERRED_SUCCESSFULLY');
 				setFile(null);
 				setUploadProgress(0);
+				setDetails({ subject: '', chapter: '', branch: '', tags: '' });
 			}, 500);
 		} catch (err: any) {
 			setError(err.message);
@@ -141,7 +157,7 @@ export default function UploadPage() {
 						onClick={() => !file && fileInputRef.current?.click()}
 						className={`
 							relative border-[3px] border-black p-8 text-center transition-all cursor-pointer
-							${isDragging ? 'bg-[#90FF90]' : 'bg-gray-50 hover:bg-white'}
+							${isDragging ? 'bg-[#90FF90]' : error ? 'bg-red-50' : 'bg-gray-50 hover:bg-white'}
 							${file ? 'cursor-default' : 'border-dashed'}
 						`}>
 						<input
@@ -154,10 +170,9 @@ export default function UploadPage() {
 
 						{!file ? (
 							<div className="flex flex-col items-center gap-3">
-								<div className="bg-black text-[#90FF90] p-4 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]">
-									<FileUp size={32} />
-								</div>
-								<p className="font-bold text-sm uppercase tracking-tighter">Click or Drag PDF to Stash</p>
+								<div className={`${error ? 'bg-red-600' : 'bg-black'} text-[#90FF90] p-4 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]`}>{error ? <ShieldAlert size={32} /> : <FileUp size={32} />}</div>
+								<p className="font-bold text-sm uppercase tracking-tighter">{error ? 'Protocol_Violation' : 'Click or Drag PDF to Stash'}</p>
+								<p className="text-[9px] font-bold uppercase text-gray-400">Payload_Limit: 50MB</p>
 							</div>
 						) : (
 							<div className="flex items-center justify-between gap-4 text-left">
@@ -173,7 +188,10 @@ export default function UploadPage() {
 								{!loading && (
 									<button
 										type="button"
-										onClick={() => setFile(null)}
+										onClick={() => {
+											setFile(null);
+											setError(null);
+										}}
 										className="p-2 border-2 border-black hover:bg-black hover:text-white transition-colors">
 										<X size={20} />
 									</button>
@@ -208,9 +226,12 @@ export default function UploadPage() {
 					</AnimatePresence>
 
 					{error && (
-						<div className="bg-red-50 border-2 border-red-600 p-3 flex items-center gap-3 font-bold text-red-600 uppercase text-[10px]">
+						<motion.div
+							initial={{ opacity: 0, x: -10 }}
+							animate={{ opacity: 1, x: 0 }}
+							className="bg-red-50 border-2 border-red-600 p-3 flex items-center gap-3 font-bold text-red-600 uppercase text-[10px]">
 							<AlertCircle size={16} /> {error}
-						</div>
+						</motion.div>
 					)}
 
 					{/* METADATA FORM */}
@@ -267,6 +288,7 @@ export default function UploadPage() {
 										<input
 											type="text"
 											placeholder="PYQ, Important"
+											value={details.tags}
 											className="w-full p-3 border-2 border-black font-bold text-sm outline-none focus:bg-yellow-50"
 											onChange={(e) => setDetails({ ...details, tags: e.target.value })}
 										/>
@@ -275,7 +297,7 @@ export default function UploadPage() {
 
 								<button
 									disabled={loading}
-									className="w-full py-4 bg-black text-[#90FF90] border-2 border-black font-bold text-xl uppercase shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-3 group">
+									className="w-full py-4 bg-black text-[#90FF90] border-2 border-black font-bold text-xl uppercase shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
 									{loading ? (
 										'Executing_Upload...'
 									) : (

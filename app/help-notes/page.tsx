@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/client';
 import { useAuth } from '@/lib/useAuth';
 import { useRouter } from 'next/navigation';
-import { Book, User, FileText, ExternalLink, Calendar, History, GraduationCap, Send, Terminal, Upload, Loader2, CheckCircle2, X, Microscope, Info, ShieldCheck, Library, Search, Sparkles, FilterX } from 'lucide-react';
+import { Book, User, FileText, ExternalLink, Calendar, History, GraduationCap, Send, Terminal, Upload, Loader2, CheckCircle2, X, Microscope, Info, ShieldCheck, Library, Search, Sparkles, FilterX, AlertTriangle } from 'lucide-react';
 import Shimmer from '../(howworks)/(components)/page';
 
 const supabase = createClient();
@@ -42,8 +42,11 @@ export default function CommunityHub() {
 
 	// Form State
 	const [uploadFile, setUploadFile] = useState<File | null>(null);
+	const [fileError, setFileError] = useState<string | null>(null);
 	const [additionalDetail, setAdditionalDetail] = useState('');
 	const [isUploading, setIsUploading] = useState(false);
+
+	const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 	// ── SUCCESS TERMINAL LOGIC ──
 	const triggerSuccessSequence = () => {
@@ -100,9 +103,28 @@ export default function CommunityHub() {
 		},
 	});
 
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0] || null;
+		setFileError(null);
+
+		if (file && file.size > MAX_FILE_SIZE) {
+			setFileError('FILE_TOO_LARGE: LIMIT 50MB');
+			setUploadFile(null);
+			return;
+		}
+
+		setUploadFile(file);
+	};
+
 	const handleHelpSubmission = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!user || !uploadFile || !activeHelpingRequest) return;
+
+		if (uploadFile.size > MAX_FILE_SIZE) {
+			setFileError('FILE_SIZE_EXCEEDED');
+			return;
+		}
+
 		try {
 			setIsUploading(true);
 			const fileName = `${Date.now()}-${uploadFile.name.replace(/\s/g, '_')}`;
@@ -211,10 +233,13 @@ export default function CommunityHub() {
 
 				{/* ── RESOURCE SUBMISSION MODAL ── */}
 				{isModalOpen && (
-					<div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 h-full backdrop-blur-md">
+					<div className="fixed inset-0 z-[200] flex mt-12 items-center justify-center p-4 bg-black/60 h-full backdrop-blur-md">
 						<div className="bg-white dark:bg-zinc-900 border-2 border-black dark:border-white w-full max-w-lg neubrutal-shadow relative animate-reveal">
 							<button
-								onClick={() => setIsModalOpen(false)}
+								onClick={() => {
+									setIsModalOpen(false);
+									setFileError(null);
+								}}
 								className="absolute -top-4 -right-4 bg-[#FF5C00] border-2 border-black dark:border-white p-2 text-white hover:bg-black transition-smooth">
 								<X size={20} />
 							</button>
@@ -232,17 +257,26 @@ export default function CommunityHub() {
 										<p className="mono-font text-[9px] font-black uppercase opacity-40 dark:text-white">Target_Request</p>
 										<p className="font-bold uppercase text-sm heading-font dark:text-white">{activeHelpingRequest?.title}</p>
 									</div>
-									<div className="relative border-2 border-black dark:border-white p-10 bg-gray-50 dark:bg-zinc-800 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-smooth">
+
+									<div className={`relative border-2 ${fileError ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : 'border-black dark:border-white bg-gray-50 dark:bg-zinc-800'} p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-smooth`}>
 										<input
 											type="file"
 											required
 											accept=".pdf"
 											className="absolute inset-0 opacity-0 cursor-pointer"
-											onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+											onChange={handleFileChange}
 										/>
-										<FileText className={`mb-2 ${uploadFile ? 'text-green-600' : 'opacity-20 dark:text-white'}`} />
-										<p className="font-black text-[10px] uppercase text-center dark:text-white">{uploadFile ? uploadFile.name : 'Drop Study Material (PDF)'}</p>
+										<FileText className={`mb-2 ${uploadFile ? 'text-green-600' : fileError ? 'text-red-500' : 'opacity-20 dark:text-white'}`} />
+										<p className="font-black text-[10px] uppercase text-center dark:text-white">{uploadFile ? uploadFile.name : fileError ? fileError : 'Drop Study Material (PDF)'}</p>
+										<p className="mono-font text-[8px] mt-2 opacity-40 dark:text-white">MAX_SIZE: 50MB</p>
 									</div>
+
+									{fileError && (
+										<div className="flex items-center gap-2 text-red-500 mono-font text-[10px] font-bold">
+											<AlertTriangle size={14} /> {fileError}
+										</div>
+									)}
+
 									<textarea
 										placeholder="Add notes..."
 										className="w-full p-4 border-2 border-black dark:border-white dark:bg-zinc-800 dark:text-white font-bold text-sm outline-none h-24 resize-none"
@@ -250,8 +284,8 @@ export default function CommunityHub() {
 										onChange={(e) => setAdditionalDetail(e.target.value)}
 									/>
 									<button
-										disabled={isUploading}
-										className="w-full bg-black dark:bg-white text-white dark:text-black py-4 font-black uppercase text-sm border-2 border-black dark:border-white hover:bg-[#90FF90] dark:hover:bg-pink-600 transition-smooth flex items-center justify-center gap-3">
+										disabled={isUploading || !!fileError || !uploadFile}
+										className="w-full bg-black dark:bg-white text-white dark:text-black py-4 font-black uppercase text-sm border-2 border-black dark:border-white enabled:hover:bg-[#90FF90] dark:enabled:hover:bg-pink-600 disabled:opacity-50 transition-smooth flex items-center justify-center gap-3">
 										{isUploading ? <Loader2 className="animate-spin" /> : 'Confirm Upload'}
 									</button>
 								</div>
@@ -299,6 +333,7 @@ export default function CommunityHub() {
 										<div className="max-w-[60%]">
 											<p className="mono-font text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase">{req.status}</p>
 											<p className="font-black uppercase text-xs truncate heading-font dark:text-white">{req.title}</p>
+											<p className="mono-font text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase">Request: {req.requested_by_email}</p>
 										</div>
 										{req.status === 'FULFILLED' ? (
 											<div className="flex items-center gap-1 text-[9px] font-black uppercase text-green-600 bg-green-50 px-2 py-1 border border-green-200">
