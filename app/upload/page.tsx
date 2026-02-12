@@ -1,42 +1,49 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/useAuth';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileUp, FileText, X, Rocket, BookOpen, Database, Cpu, Hash, AlertCircle, Terminal, Activity, ShieldAlert } from 'lucide-react';
+import { FileUp, FileText, X, Rocket, BookOpen, Database, Cpu, Hash, AlertCircle, Terminal, Activity, ShieldAlert, Loader2 } from 'lucide-react';
 
 export default function UploadPage() {
+	const { user, loading: authLoading } = useAuth();
+	const router = useRouter();
+
 	const [file, setFile] = useState<File | null>(null);
 	const [details, setDetails] = useState({ subject: '', chapter: '', branch: '', tags: '' });
-	const [loading, setLoading] = useState(false);
+	const [uploading, setUploading] = useState(false);
 	const [uploadProgress, setUploadProgress] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const { user } = useAuth();
 
-	// Constraint: 50MB in bytes
+	// ── AUTH GUARD ──
+	useEffect(() => {
+		if (!authLoading && !user) {
+			router.push('/login');
+		}
+	}, [user, authLoading, router]);
+
+	// Constraint: 50MB
 	const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 	const handleFileChange = (selectedFile: File | undefined) => {
 		if (!selectedFile) return;
 
-		// Validation 1: MIME Type
 		if (selectedFile.type !== 'application/pdf') {
 			setError('CORE_ERROR: INVALID_MIME_TYPE. REQUIRE_PDF.');
 			setFile(null);
 			return;
 		}
 
-		// Validation 2: File Size
 		if (selectedFile.size > MAX_FILE_SIZE) {
 			setError(`OVERSIZE_LOAD: ${selectedFile.name} EXCEEDS 50MB LIMIT.`);
 			setFile(null);
 			return;
 		}
 
-		// Success: Set file and auto-suggest metadata
 		setFile(selectedFile);
 		setError(null);
 		const cleanName = selectedFile.name.split('.')[0].replace(/[-_]/g, ' ');
@@ -45,12 +52,11 @@ export default function UploadPage() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!file || !user || loading) return;
+		if (!file || !user || uploading) return;
 
-		setLoading(true);
+		setUploading(true);
 		setUploadProgress(0);
 
-		// Simulating progress for the UI
 		const interval = setInterval(() => {
 			setUploadProgress((prev) => (prev < 90 ? prev + Math.random() * 15 : prev));
 		}, 400);
@@ -61,6 +67,7 @@ export default function UploadPage() {
 		formData.append('chapter', details.chapter);
 		formData.append('branch', details.branch);
 		formData.append('tags', details.tags);
+		formData.append('uploader_email', user.email || '');
 
 		try {
 			const res = await fetch('/api/upload-pdf', { method: 'POST', body: formData });
@@ -68,18 +75,34 @@ export default function UploadPage() {
 
 			setUploadProgress(100);
 			setTimeout(() => {
-				alert('DATA_PACKET_TRANSFERRED_SUCCESSFULLY');
 				setFile(null);
 				setUploadProgress(0);
 				setDetails({ subject: '', chapter: '', branch: '', tags: '' });
+				setError(null);
 			}, 500);
 		} catch (err: any) {
 			setError(err.message);
 		} finally {
 			clearInterval(interval);
-			setLoading(false);
+			setUploading(false);
 		}
 	};
+
+	// ── LOADING STATE FOR AUTH CHECK ──
+	if (authLoading) {
+		return (
+			<div className="min-h-screen bg-[#F0F0F0] flex flex-col items-center justify-center">
+				<Loader2
+					className="animate-spin text-black mb-4"
+					size={48}
+				/>
+				<p className="mono-font font-bold uppercase text-xs tracking-widest animate-pulse">Verifying_Credentials...</p>
+			</div>
+		);
+	}
+
+	// Prevent UI flash before redirect
+	if (!user) return null;
 
 	return (
 		<div className="min-h-screen bg-[#F0F0F0] p-4 md:p-10 flex items-center justify-center selection:bg-black selection:text-[#90FF90] relative overflow-hidden">
@@ -120,19 +143,18 @@ export default function UploadPage() {
 			{/* Background Deco */}
 			<div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none mono-font text-[10px] overflow-hidden leading-none p-2 uppercase">
 				{Array.from({ length: 50 }).map((_, i) => (
-					<div key={i}>upload_init_sector_{i} ... encrypted_transfer_v2 ... 0x889234 ... status_ok</div>
+					<div key={i}>upload_init_sector_{i} ... encrypted_transfer_v2 ... status_ok</div>
 				))}
 			</div>
 
 			<motion.div className="w-full max-w-2xl bg-white border-[3px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-6 md:p-10 relative z-10 vault-reveal">
-				{/* Header */}
 				<header className="mb-8 relative border-b-2 border-black pb-6">
 					<div className="flex items-center gap-2 mb-2">
 						<Terminal
 							size={14}
 							className="text-pink-600"
 						/>
-						<span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Uplode_To_V</span>
+						<span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Authenticated_as: {user.email?.split('@')[0]}</span>
 					</div>
 					<h1 className="text-5xl font-black uppercase tracking-tighter leading-none">
 						VAULT_<span className="text-pink-600">INJECT</span>
@@ -185,7 +207,7 @@ export default function UploadPage() {
 										<p className="text-[10px] font-bold text-gray-400">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
 									</div>
 								</div>
-								{!loading && (
+								{!uploading && (
 									<button
 										type="button"
 										onClick={() => {
@@ -202,7 +224,7 @@ export default function UploadPage() {
 
 					{/* PROGRESS BAR */}
 					<AnimatePresence>
-						{loading && (
+						{uploading && (
 							<motion.div
 								initial={{ opacity: 0, height: 0 }}
 								animate={{ opacity: 1, height: 'auto' }}
@@ -216,7 +238,7 @@ export default function UploadPage() {
 								</div>
 								<div className="w-full h-4 bg-gray-100 border-2 border-black p-0.5">
 									<motion.div
-										className="h-full bg-pink-600 shadow-[0_0_10px_rgba(219,39,119,0.4)]"
+										className="h-full bg-pink-600"
 										initial={{ width: 0 }}
 										animate={{ width: `${uploadProgress}%` }}
 									/>
@@ -236,7 +258,7 @@ export default function UploadPage() {
 
 					{/* METADATA FORM */}
 					<AnimatePresence>
-						{file && !loading && (
+						{file && !uploading && (
 							<motion.div
 								initial={{ opacity: 0, y: 10 }}
 								animate={{ opacity: 1, y: 0 }}
@@ -296,17 +318,17 @@ export default function UploadPage() {
 								</div>
 
 								<button
-									disabled={loading}
+									disabled={uploading}
 									className="w-full py-4 bg-black text-[#90FF90] border-2 border-black font-bold text-xl uppercase shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
-									{loading ? (
+									{uploading ? (
 										'Executing_Upload...'
 									) : (
 										<>
-											Deploy_To_Vault{' '}
 											<Rocket
 												size={20}
 												className="group-hover:-translate-y-1 transition-transform"
-											/>
+											/>{' '}
+											Deploy_To_Vault
 										</>
 									)}
 								</button>

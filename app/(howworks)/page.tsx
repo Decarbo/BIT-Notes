@@ -160,10 +160,10 @@ export default function HowItWorks() {
 						</div>
 
 						<div className="flex gap-4">
-							{['Github', 'Twitter', 'Terms'].map((link) => (
+							{['Github'].map((link) => (
 								<a
 									key={link}
-									href="#"
+									href="https://github.com/Decarbo"
 									className="mono-font text-[10px] font-black uppercase hover:text-pink-600 transition-colors">
 									[{link}]
 								</a>

@@ -258,7 +258,7 @@ export default function PublicNotes() {
 												<span className="text-sm font-black uppercase truncate italic">{note.subject}</span>
 											</div>
 											<div className="pt-4 border-t-2 border-black/5 flex justify-between items-center opacity-40 mono-font text-[9px] font-bold uppercase">
-												<span>ID: {note.id.slice(0, 8)}</span>
+												<span>ID: {note.uploader_email}</span>
 												<span>{new Date(note.created_at).toLocaleDateString()}</span>
 											</div>
 										</div>
@@ -319,7 +319,7 @@ export default function PublicNotes() {
 					</div>
 				)}
 
-				<footer className="mt-20 pt-10 border-t-8 border-black">
+				<footer className="mt-20 pt-4  border-t-4 border-black">
 					<div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-10">
 						<div className="flex items-center gap-4">
 							<div className="bg-black p-2 text-[#90FF90]">
@@ -331,15 +331,6 @@ export default function PublicNotes() {
 							<h2 className="text-4xl font-black uppercase tracking-tighter italic">
 								BIT<span className="text-pink-500">.NOTES</span>
 							</h2>
-						</div>
-						<div className="flex gap-4">
-							{['Terminal', 'Logs', 'Social'].map((item) => (
-								<button
-									key={item}
-									className="mono-font text-[10px] font-black uppercase border-2 border-black px-4 py-1 hover:bg-black hover:text-white transition-colors">
-									{item}
-								</button>
-							))}
 						</div>
 					</div>
 					<div className="flex flex-col md:flex-row justify-between items-center gap-4 py-6 border-t-4 border-black/5 opacity-40">
