@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BIT-Notes — Project Overview
 
-## Getting Started
+A compact summary and quick-start for the BIT-Notes project.
 
-First, run the development server:
+## What is this
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+BIT-Notes is a Next.js application (app router, TypeScript) that provides a curated public archive of study notes and files. It includes: a searchable feed, per-note viewing, user authentication, and bookmarking/saving of notes. The UI uses Tailwind CSS with a brutalist/neubrutal design language.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+-  Public notes feed with search, filtering, and pagination
+-  Bookmarking system per authenticated user
+-  Community / contributed notes section
+-  File viewing via external file URLs
+-  Server-side API routes for uploading and handling notes (Supabase backing)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech stack
 
-## Learn More
+-  Next.js (app directory)
+-  TypeScript
+-  Tailwind CSS
+-  React Query (@tanstack/react-query) for data fetching and caching
+-  Supabase (Postgres + Auth + Storage)
+-  Lucide icons & Heroicons
 
-To learn more about Next.js, take a look at the following resources:
+## Quick start (development)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install dependencies
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   -  Open a terminal in the project root and run:
+      -  npm install
 
-## Deploy on Vercel
+2. Environment variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   Create a .env.local file in project root with values required by Supabase and Next.js. Typical variables:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   -  NEXT_PUBLIC_SUPABASE_URL
+   -  NEXT_PUBLIC_SUPABASE_ANON_KEY
+   -  SUPABASE_SERVICE_ROLE_KEY (only for server-side scripts if used)
+
+3. Run the dev server
+
+   -  npm run dev
+
+4. Build for production
+
+   -  npm run build
+   -  npm start
+
+## Project layout (important files)
+
+-  app/ — Next.js app directory: routes, pages and components
+   -  app/notes/page.tsx — Public notes feed (main list, pagination, search, bookmarking)
+   -  app/api/upload-pdf/route.ts — Example server route for uploads
+-  lib/ — shared utilities and clients (supabase client, queries, auth hooks)
+-  public/ — static assets
+-  tailwind.config.js, next.config.ts, tsconfig.json — core config files
+
+## Development notes
+
+-  Data fetching uses React Query; prefer using the existing hooks in `lib/queries` when adding features.
+-  The app uses a client-side `useAuth` hook to gate actions like bookmarking — redirect to `/login` for unauthenticated users.
+-  Keep UI consistent with the `neubrutal` utility classes already used in the codebase.
+
+## Contributing
+
+-  Open an issue for bugs or feature requests.
+-  Fork, implement, and submit a PR with a short description of changes.
+-  Run formatting and linting before submitting (project may include ESLint/Prettier configs).
+
+## License
+
+Add a LICENSE file to the repo and choose a license (e.g., MIT) if you plan to open-source the project.
+
+---
+
+Generated project overview for quick onboarding and documentation. Update environment variable names and scripts to match your `package.json` if they differ.
