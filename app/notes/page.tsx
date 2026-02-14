@@ -179,8 +179,17 @@ export default function PublicNotes() {
 									COMMUNITY_ARCHIVE <Lock className="inline-block" />{' '}
 								</option>
 								<option value="BOOKMARKED">SAVED_ITEMS ({bookmarks.length})</option>
-								<option value="CSE">CSE_DEPT</option>
-								<option value="MECH">MECH_DEPT</option>
+								<option value="CSE">CSE</option>
+								<option value="IT">IT</option>
+								<option value="CYBER">CYBER</option>
+								<option value="MECH">MECH</option>
+								<option value="ECE">ECE</option>
+								<option value="EE">EE</option>
+								<option value="CHEM">CHEM</option>
+								<option value="CIVIL">CIVIL</option>
+								<option value="PROD">PROD</option>
+								<option value="MINING">MINING</option>
+								<option value="METAL">METAL</option>
 							</select>
 							<Cpu
 								className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none"

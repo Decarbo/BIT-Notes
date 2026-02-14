@@ -299,8 +299,16 @@ export default function UploadPage() {
 											onChange={(e) => setDetails({ ...details, branch: e.target.value })}>
 											<option value="">Select_Dept</option>
 											<option value="CSE">CSE</option>
+											<option value="IT">IT</option>
+											<option value="CYBER">CYBER</option>
 											<option value="MECH">MECH</option>
 											<option value="ECE">ECE</option>
+											<option value="EE">EE</option>
+											<option value="CHEM">CHEM</option>
+											<option value="CIVIL">CIVIL</option>
+											<option value="PROD">PROD</option>
+											<option value="MINING">MINING</option>
+											<option value="METAL">METAL</option>
 										</select>
 									</div>
 									<div className="space-y-1">
